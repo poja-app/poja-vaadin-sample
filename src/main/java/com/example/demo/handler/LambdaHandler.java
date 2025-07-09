@@ -1,98 +1,100 @@
 package com.example.demo.handler;
 
-import static java.lang.String.join;
-import static java.util.stream.Collectors.toMap;
-
+import com.amazonaws.serverless.exceptions.ContainerInitializationException;
+import com.amazonaws.serverless.proxy.model.AwsProxyResponse;
+import com.amazonaws.serverless.proxy.model.HttpApiV2ProxyRequest;
+import com.amazonaws.serverless.proxy.spring.SpringBootLambdaContainerHandler;
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
 import com.example.demo.PojaApplication;
-import com.example.demo.handler.exceptionHandler.ExceptionHandler;
-import com.example.demo.handler.exceptionHandler.ExceptionHandlerImpl;
-import com.example.demo.handler.model.ResponseEvent.LambdaUrlResponseEvent;
-import com.example.demo.handler.model.requestEvent.LambdaUrlRequestEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import lombok.Getter;
+import com.vaadin.flow.server.ServiceException;
+import com.vaadin.flow.server.VaadinServlet;
+import com.vaadin.flow.server.VaadinServletService;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRegistration;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Collections;
+import java.util.Enumeration;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.SpringApplication;
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-@Slf4j
-public class LambdaHandler
-    implements RequestHandler<LambdaUrlRequestEvent, LambdaUrlResponseEvent> {
+public class LambdaHandler implements RequestStreamHandler {
+    private static final SpringBootLambdaContainerHandler<HttpApiV2ProxyRequest, AwsProxyResponse>
+            handler;
 
-  @Getter
-  private static final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+    static {
+        try {
+            // Disable WebSocket support
+            handler = SpringBootLambdaContainerHandler.getHttpApiV2ProxyHandler(PojaApplication.class);
+            handler.onStartup((servletContext) -> {
+                //register vaadin servlet
+                VaadinServlet vaadinServlet = new LambdaVaadinServlet();
 
-  private static final String SERVER_PORT = "0";
+                ServletRegistration.Dynamic registration = servletContext.addServlet("vaadinServlet", vaadinServlet);
+                registration.addMapping("/*");
+                registration.setAsyncSupported(true);
+                registration.setLoadOnStartup(1);
+                try {
+                    vaadinServlet.init(new ServletConfig() {
+                        @Override
+                        public String getServletName() {
+                            return "vaadinServlet";
+                        }
 
-  private final RequestMappingHandlerAdapter handlerAdapter;
-  private final RequestMappingHandlerMapping handlerMapping;
-  private final ExceptionHandler<LambdaUrlResponseEvent> exceptionHandler;
+                        @Override
+                        public ServletContext getServletContext() {
+                            return servletContext;
+                        }
 
-  public LambdaHandler() {
-    ConfigurableApplicationContext context = applicationContext();
-    this.handlerAdapter = context.getBean(RequestMappingHandlerAdapter.class);
-    this.handlerMapping = context.getBean(RequestMappingHandlerMapping.class);
-    this.exceptionHandler = defaultExceptionHandler();
-  }
+                        @Override
+                        public String getInitParameter(String name) {
+                            return null;
+                        }
 
-  @Override
-  public LambdaUrlResponseEvent handleRequest(LambdaUrlRequestEvent event, Context context) {
-    /*try {
-        var request = new HttpServletRequestWrapper(event);
-        ServletRequestPathUtils.parseAndCache(request);
+                        @Override
+                        public Enumeration<String> getInitParameterNames() {
+                            return Collections.emptyEnumeration();
+                        }
+                    });
+                } catch (ServletException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (ContainerInitializationException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Initialization of Spring Boot Application failed", e);
+        }
+    }
 
-        var headers = toMultiValueHeaders(event.getHeaders());
-
-        var responseOutputStream = new ByteArrayOutputStream();
-        HttpServletResponseWrapper response =
-                new HttpServletResponseWrapper(responseOutputStream, headers);
-
-        var executionChain = handlerMapping.getHandler(request);
-        if (executionChain == null) {
-            throw new RuntimeException("No handler found for request " + request.getRequestURI());
+    @Slf4j
+    static class LambdaVaadinServlet extends VaadinServlet {
+        @Override
+        public void init(ServletConfig servletConfig) throws ServletException {
+            super.init(servletConfig);
+            VaadinServletService service = null;
+            try {
+                service = createServletService();
+            } catch (ServiceException e) {
+                throw new RuntimeException(e);
+            }
+            log.info("VaadinServlet initialized as {} with service {}", this, service);
         }
 
-        var handler = executionChain.getHandler();
-        handlerAdapter.handle(request, response, handler);
+        @Override
+        protected boolean serveStaticOrWebJarRequest(HttpServletRequest request, HttpServletResponse response) throws IOException {
+            return false;
+        }
+    }
 
-        var responseBody = responseOutputStream.toString(UTF_8);
-        return new LambdaUrlResponseEvent(
-                response.getStatus(), flattenHeaders(headers), responseBody);
-    } catch (Exception e) {
-        return exceptionHandler.handle(e);
-    }*/
-    log.info("Received lambda request: {}", event);
-    return new LambdaUrlResponseEvent(
-        200, flattenHeaders(toMultiValueHeaders(event.getHeaders())), "working");
-  }
-
-  private ExceptionHandler<LambdaUrlResponseEvent> defaultExceptionHandler() {
-    return new ExceptionHandlerImpl();
-  }
-
-  private ConfigurableApplicationContext applicationContext() {
-    var application = new SpringApplication(PojaApplication.class);
-    application.setDefaultProperties(Map.of("server.port", SERVER_PORT));
-    return application.run();
-  }
-
-  private Map<String, String> flattenHeaders(Map<String, List<String>> headers) {
-    return headers != null
-        ? headers.entrySet().stream()
-            .collect(toMap(Map.Entry::getKey, entry -> join(",", entry.getValue())))
-        : new HashMap<>();
-  }
-
-  private Map<String, List<String>> toMultiValueHeaders(Map<String, String> singleValueHeaders) {
-    return singleValueHeaders != null
-        ? singleValueHeaders.entrySet().stream()
-            .collect(toMap(Map.Entry::getKey, entry -> List.of(entry.getValue())))
-        : new HashMap<>();
-  }
+    @Override
+    public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context)
+            throws IOException {
+        handler.proxyStream(inputStream, outputStream, context);
+    }
 }
