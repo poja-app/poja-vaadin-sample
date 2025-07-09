@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: poja-vaadin-sample - Computation and API
+
+Globals:
+  Function:
+    CodeUri: .
+    Runtime: java21
+    Tracing: Active
+    Architectures:
+      - arm64
+    EventInvokeConfig:
+      MaximumRetryAttempts: 0
+    
+    
+    Environment:
+      Variables:
+        ENV: !Ref Env
+        AWS_SES_SOURCE: noreply@nowhere.com
+        
+        
+        
+        JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Dspring.main.lazy-initialization=true -Dspring.data.jpa.repositories.bootstrap-mode=lazy -Dspring.datasource.max-active=5 -Dspring.datasource.max-idle=1 -Dspring.datasource.min-idle=1 -Dspring.datasource.initial-size=1
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  
+  FrontalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: com.example.demo.handler.LambdaHandler::handleRequest
+      MemorySize: 2048
+      Timeout: 15
+      Role: !Sub '{{resolve:ssm:/poja-vaadin-sample/${Env}/execution/role-arn}}'
+      
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: BUFFERED
+        
+
+  ApiUrlSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Join [ '', [ /poja-vaadin-sample/, !Ref Env, /api/url ] ]
+      Type: String
+      Value: !GetAtt FrontalFunctionUrl.FunctionUrl
+  
+Outputs:
+  ApiUrl:
+    Description: Url to access the frontal function
+    Value: !GetAtt FrontalFunctionUrl.FunctionUrl
+        

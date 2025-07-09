@@ -1,0 +1,55 @@
+compute:
+  api_gateway_timeout: null
+  frontal_function_invocation_method: lambda-url
+  frontal_function_timeout: 15
+  frontal_memory: 2048
+  with_queues_nb: 0
+  worker_1_batch: 5
+  worker_1_memory: 1024
+  worker_2_batch: 5
+  worker_2_memory: 1024
+  worker_function_1_timeout: 200
+  worker_function_2_timeout: 600
+concurrency:
+  frontal_reserved_concurrent_executions_nb: null
+  worker_1_reserved_concurrent_executions_nb: null
+  worker_2_reserved_concurrent_executions_nb: null
+database:
+  with_database: none
+emailing:
+  ses_source: noreply@nowhere.com
+gen_api_client:
+  aws_account_id: ''
+  codeartifact_domain_name: ''
+  codeartifact_repository_name: ''
+  ts_client_api_url_env_var_name: ''
+  ts_client_default_openapi_server_url: ''
+  with_gen_clients: 'false'
+  with_publish_to_npm_registry: 'false'
+general:
+  app_name: poja-vaadin-sample
+  cli_version: 20.0.7
+  custom_java_deps: poja-custom-java-deps.txt
+  custom_java_env_vars: poja-custom-java-env-vars.txt
+  custom_java_repositories: poja-custom-java-repositories.txt
+  package_full_name: com.example.demo
+  poja_domain_owner: null
+  poja_python_repository_domain: null
+  poja_python_repository_name: null
+  with_snapstart: 'false'
+integration:
+  with_codeql: 'false'
+  with_file_storage: 'false'
+  with_sentry: 'false'
+  with_sonar: 'false'
+  with_swagger_ui: 'false'
+networking:
+  region: eu-west-3
+  ssm_sg_id: null
+  ssm_subnet1_id: null
+  ssm_subnet2_id: null
+  with_own_vpc: 'false'
+scheduled_tasks: null
+testing:
+  jacoco_min_coverage: '0.0'
+  java_facade_it: FacadeIT

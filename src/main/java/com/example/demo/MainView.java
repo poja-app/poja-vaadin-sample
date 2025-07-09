@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import com.example.demo.service.GreetService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
