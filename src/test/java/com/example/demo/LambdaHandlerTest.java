@@ -1,32 +1,38 @@
 package com.example.demo;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.jupiter.api.Assertions.*;
 
+import com.amazonaws.serverless.proxy.model.HttpApiV2HttpContext;
+import com.amazonaws.serverless.proxy.model.HttpApiV2ProxyRequest;
+import com.amazonaws.serverless.proxy.model.HttpApiV2ProxyRequestContext;
 import com.example.demo.handler.LambdaHandler;
-import com.example.demo.handler.model.requestEvent.Http;
-import com.example.demo.handler.model.requestEvent.LambdaUrlRequestEvent;
-import com.example.demo.handler.model.requestEvent.RequestContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class LambdaHandlerTest {
   LambdaHandler handler = new LambdaHandler();
 
   @Test
-  void handle_non_vaadin_event_ok() throws IOException {
-    LambdaUrlRequestEvent event = new LambdaUrlRequestEvent();
-    RequestContext requestContext = new RequestContext();
-    Http http = new Http();
+  void test() throws IOException {
+    var body = new HttpApiV2ProxyRequest();
+    body.setRawPath("/");
+    body.setVersion("1.0");
+    HttpApiV2ProxyRequestContext requestContext = new HttpApiV2ProxyRequestContext();
+    HttpApiV2HttpContext http = new HttpApiV2HttpContext();
     http.setMethod("GET");
-    http.setPath("/ping");
     requestContext.setHttp(http);
-    event.setRequestContext(requestContext);
-    event.setHeaders(Map.of());
-    event.setVersion("1.0");
-    event.setRawPath("/ping");
-    var response = handler.handleRequest(event, null);
+    body.setRequestContext(requestContext);
+    var inputStream =
+        new ByteArrayInputStream(
+            new ObjectMapper().findAndRegisterModules().writeValueAsBytes(body));
 
-    assertEquals("working", response.getBody());
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    handler.handleRequest(inputStream, outputStream, null);
+
+    assertEquals("HTML CONTENT", outputStream.toString(UTF_8));
   }
 }
