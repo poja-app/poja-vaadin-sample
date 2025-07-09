@@ -1,7 +1,7 @@
 package com.example.demo;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.serverless.proxy.model.HttpApiV2HttpContext;
 import com.amazonaws.serverless.proxy.model.HttpApiV2ProxyRequest;

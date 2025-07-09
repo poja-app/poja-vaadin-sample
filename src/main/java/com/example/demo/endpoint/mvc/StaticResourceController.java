@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Controller
 public class StaticResourceController {
 
-    @GetMapping("/frontend/{filename:.+}")
-    public ResponseEntity<Resource> serve(@PathVariable String filename) {
-        Resource resource = new ClassPathResource("/frontend/" + filename);
-        if (!resource.exists()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok().body(resource);
+  @GetMapping("/frontend/{filename:.+}")
+  public ResponseEntity<Resource> serve(@PathVariable String filename) {
+    Resource resource = new ClassPathResource("/frontend/" + filename);
+    if (!resource.exists()) {
+      return ResponseEntity.notFound().build();
     }
+    return ResponseEntity.ok().body(resource);
+  }
 }

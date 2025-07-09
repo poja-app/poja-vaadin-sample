@@ -24,77 +24,81 @@ import java.util.Enumeration;
 import lombok.extern.slf4j.Slf4j;
 
 public class LambdaHandler implements RequestStreamHandler {
-    private static final SpringBootLambdaContainerHandler<HttpApiV2ProxyRequest, AwsProxyResponse>
-            handler;
+  private static final SpringBootLambdaContainerHandler<HttpApiV2ProxyRequest, AwsProxyResponse>
+      handler;
 
-    static {
-        try {
-            // Disable WebSocket support
-            handler = SpringBootLambdaContainerHandler.getHttpApiV2ProxyHandler(PojaApplication.class);
-            handler.onStartup((servletContext) -> {
-                //register vaadin servlet
-                VaadinServlet vaadinServlet = new LambdaVaadinServlet();
+  static {
+    try {
+      // Disable WebSocket support
+      handler = SpringBootLambdaContainerHandler.getHttpApiV2ProxyHandler(PojaApplication.class);
+      handler.onStartup(
+          (servletContext) -> {
+            // register vaadin servlet
+            VaadinServlet vaadinServlet = new LambdaVaadinServlet();
 
-                ServletRegistration.Dynamic registration = servletContext.addServlet("vaadinServlet", vaadinServlet);
-                registration.addMapping("/*");
-                registration.setAsyncSupported(true);
-                registration.setLoadOnStartup(1);
-                try {
-                    vaadinServlet.init(new ServletConfig() {
-                        @Override
-                        public String getServletName() {
-                            return "vaadinServlet";
-                        }
-
-                        @Override
-                        public ServletContext getServletContext() {
-                            return servletContext;
-                        }
-
-                        @Override
-                        public String getInitParameter(String name) {
-                            return null;
-                        }
-
-                        @Override
-                        public Enumeration<String> getInitParameterNames() {
-                            return Collections.emptyEnumeration();
-                        }
-                    });
-                } catch (ServletException e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                }
-            });
-        } catch (ContainerInitializationException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Initialization of Spring Boot Application failed", e);
-        }
-    }
-
-    @Slf4j
-    static class LambdaVaadinServlet extends VaadinServlet {
-        @Override
-        public void init(ServletConfig servletConfig) throws ServletException {
-            super.init(servletConfig);
-            VaadinServletService service = null;
+            ServletRegistration.Dynamic registration =
+                servletContext.addServlet("vaadinServlet", vaadinServlet);
+            registration.addMapping("/*");
+            registration.setAsyncSupported(true);
+            registration.setLoadOnStartup(1);
             try {
-                service = createServletService();
-            } catch (ServiceException e) {
-                throw new RuntimeException(e);
-            }
-            log.info("VaadinServlet initialized as {} with service {}", this, service);
-        }
+              vaadinServlet.init(
+                  new ServletConfig() {
+                    @Override
+                    public String getServletName() {
+                      return "vaadinServlet";
+                    }
 
-        @Override
-        protected boolean serveStaticOrWebJarRequest(HttpServletRequest request, HttpServletResponse response) throws IOException {
-            return false;
-        }
+                    @Override
+                    public ServletContext getServletContext() {
+                      return servletContext;
+                    }
+
+                    @Override
+                    public String getInitParameter(String name) {
+                      return null;
+                    }
+
+                    @Override
+                    public Enumeration<String> getInitParameterNames() {
+                      return Collections.emptyEnumeration();
+                    }
+                  });
+            } catch (ServletException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+          });
+    } catch (ContainerInitializationException e) {
+      e.printStackTrace();
+      throw new RuntimeException("Initialization of Spring Boot Application failed", e);
+    }
+  }
+
+  @Slf4j
+  static class LambdaVaadinServlet extends VaadinServlet {
+    @Override
+    public void init(ServletConfig servletConfig) throws ServletException {
+      super.init(servletConfig);
+      VaadinServletService service = null;
+      try {
+        service = createServletService();
+      } catch (ServiceException e) {
+        throw new RuntimeException(e);
+      }
+      log.info("VaadinServlet initialized as {} with service {}", this, service);
     }
 
     @Override
-    public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context)
-            throws IOException {
-        handler.proxyStream(inputStream, outputStream, context);
+    protected boolean serveStaticOrWebJarRequest(
+        HttpServletRequest request, HttpServletResponse response) throws IOException {
+      return false;
     }
+  }
+
+  @Override
+  public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context)
+      throws IOException {
+    handler.proxyStream(inputStream, outputStream, context);
+  }
 }
